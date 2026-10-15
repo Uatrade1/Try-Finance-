@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moliya - Shaxsiy Moliya Boshqaruvi</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Import Map for React, Recharts and Lucide Icons via ESM -->
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18",
+          "react-dom": "https://esm.sh/react-dom@18",
+          "react-dom/client": "https://esm.sh/react-dom@18/client",
+          "recharts": "https://esm.sh/recharts@2.12.7",
+          "lucide-react": "https://esm.sh/lucide-react@0.344.0"
+        }
+      }
+    </script>
+    <!-- Babel Standalone for JSX compilation in browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased selection:bg-violet-600 selection:text-white">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+      import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+      import { createRoot } from "react-dom/client";
+      import {
+        BarChart, Bar, PieChart, Pie, Cell,
+        XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+      } from "recharts";
+      import {
+        Wallet, TrendingUp, TrendingDown, ShieldCheck, Plus, Trash2,
+        Target, Bell, Search, ChevronDown, ChevronLeft, ChevronRight, X, CheckCircle,
+        AlertTriangle, BookOpen, Briefcase, Users, Cpu, MoreHorizontal,
+        Home, ShoppingCart, Train, GraduationCap, Music, Zap, SlidersHorizontal,
+        ArrowUpRight, ArrowDownRight, PiggyBank, Calendar, BarChart2,
+        Pencil, Download, Upload, Settings, RotateCcw,
+        Award, Laptop, Tag, Gift, Undo2, Receipt, Wifi, Utensils, Car, HeartPulse,
+        Dumbbell, Shirt, Sparkles, Repeat, Heart, Wrench, Landmark, Banknote,
+        Star, Coffee, Plane, Smartphone, Gamepad2, Pill, Lightbulb, Flag, Clock, EyeOff, CreditCard, Eye, Lock, ArrowLeftRight
+      } from "lucide-react";
+
+      // ─── Categories ─────────────────────────────────────────────────────────────
+      const cat = (id, label, icon, color, group, bucket) => ({ id, label, icon, color, group, bucket });
+
+      const INCOME_CATEGORIES = [
+        cat("oylik", "Oylik ish haqi", Briefcase, "#34d399", "Ish daromadi"),
+        cat("bonus", "Bonus / mukofot", Award, "#4ade80", "Ish daromadi"),
+        cat("staj", "Stajirovka", BookOpen, "#60a5fa", "Ish daromadi"),
+        cat("sirtqi", "Sirtqi ishlar", Cpu, "#fbbf24", "Qo'shimcha daromad"),
+        cat("frilans", "Frilans / onlayn loyiha", Laptop, "#22d3ee", "Qo'shimcha daromad"),
+        cat("treyding", "Treyding / investitsiya", TrendingUp, "#818cf8", "Qo'shimcha daromad"),
+        cat("sotuv", "Sotuvdan tushum", Tag, "#f59e0b", "Qo'shimcha daromad"),
+        cat("stipendiya", "Stipendiya / grant", GraduationCap, "#2dd4bf", "Boshqa manbalar"),
+        cat("sovga_t", "Sovg'a / yordam", Gift, "#f472b6", "Boshqa manbalar"),
+        cat("tanish", "Tanishlardan qaytgan pul", Users, "#a78bfa", "Boshqa manbalar"),
+        cat("qaytim", "Qaytarilgan to'lov", Undo2, "#38bdf8", "Boshqa manbalar"),
+        cat("boshqa_t", "Boshqa tushum", MoreHorizontal, "#94a3b8", "Boshqa manbalar"),
+      ];
+
+      const EXPENSE_CATEGORIES = [
+        cat("ijara", "Kvartira / Ijara", Home, "#f87171", "Uy-joy", "ehtiyoj"),
+        cat("kommunal", "Kommunal to'lovlar", Receipt, "#fb7185", "Uy-joy", "ehtiyoj"),
+        cat("aloqa", "Aloqa va internet", Wifi, "#f97316", "Uy-joy", "ehtiyoj"),
+        cat("oziq", "Oziq-ovqat", ShoppingCart, "#fb923c", "Ovqatlanish", "ehtiyoj"),
+        cat("kafe", "Kafe / restoran", Utensils, "#fdba74", "Ovqatlanish", "istak"),
+        cat("yolkira", "Yo'lkira / Metro", Train, "#facc15", "Transport", "ehtiyoj"),
+        cat("taksi", "Taksi", Car, "#eab308", "Transport", "istak"),
+        cat("kontrakt", "Kontrakt jamg'armasi", GraduationCap, "#a78bfa", "Ta'lim", "jamgarma"),
+        cat("kurs", "Kurs / kitob", BookOpen, "#c084fc", "Ta'lim", "ehtiyoj"),
+        cat("salomatlik", "Dori / shifokor", HeartPulse, "#2dd4bf", "Salomatlik", "ehtiyoj"),
+        cat("sport", "Sport / zal", Dumbbell, "#4ade80", "Salomatlik", "istak"),
+        cat("kiyim", "Kiyim-kechak", Shirt, "#e879f9", "Shaxsiy", "istak"),
+        cat("gigiena", "Gigiena / parvarish", Sparkles, "#f0abfc", "Shaxsiy", "ehtiyoj"),
+        cat("kongiloch", "Ko'ngilochar", Music, "#f472b6", "Dam olish", "istak"),
+        cat("obuna", "Obunalar", Repeat, "#ec4899", "Dam olish", "istak"),
+        cat("sovga", "Sovg'a va tadbirlar", Gift, "#fda4af", "Ijtimoiy", "istak"),
+        cat("xayriya", "Xayriya / sadaqa", Heart, "#f43f5e", "Ijtimoiy", "boshqa"),
+        cat("biznes", "Ish / biznes xarajati", Wrench, "#60a5fa", "Ish va moliya", "boshqa"),
+        cat("qarz", "Qarz qaytarish", Banknote, "#a3a3a3", "Ish va moliya", "ehtiyoj"),
+        cat("soliq", "Soliq va rasmiy to'lovlar", Landmark, "#64748b", "Ish va moliya", "ehtiyoj"),
+        cat("jamgarma", "Zaxira fondi", PiggyBank, "#38bdf8", "Jamg'arma", "jamgarma"),
+        cat("kutilmagan", "Kutilmagan xarajat", Zap, "#94a3b8", "Boshqa", "boshqa"),
+      ];
+
+      const BUCKETS = [
+        { id: "ehtiyoj", label: "Ehtiyoj", target: 50, color: "#60a5fa" },
+        { id: "istak", label: "Istak", target: 30, color: "#f472b6" },
+        { id: "jamgarma", label: "Jamg'arma", target: 20, color: "#34d399" },
+        { id: "boshqa", label: "Boshqa", target: null, color: "#94a3b8" },
+      ];
+
+      const PAYMENT_METHODS = [
+        { id: "naqd", label: "Naqd pul", short: "Naqd", icon: Wallet, color: "#34d399" },
+        { id: "karta", label: "Karta", short: "Karta", icon: CreditCard, color: "#60a5fa" },
+      ];
+      const isValidMethod = (m) => m === "naqd" || m === "karta";
+      const BACKUP_REMINDER_DAYS = 14;
+      const BACKUP_SNOOZE_DAYS = 3;
+      const daysSince = (dateStr) => (dateStr ? Math.floor((new Date(todayStr()) - new Date(dateStr)) / 86400000) : Infinity);
+      const methodMeta = (id) => PAYMENT_METHODS.find((m) => m.id === id) || PAYMENT_METHODS[1];
+
+      const CUSTOM_ICONS = {
+        star: Star, heart: Heart, gift: Gift, coffee: Coffee, car: Car, shirt: Shirt,
+        plane: Plane, phone: Smartphone, game: Gamepad2, pill: Pill, home: Home, cart: ShoppingCart,
+      };
+      const CUSTOM_COLORS = ["#f87171", "#fb923c", "#facc15", "#34d399", "#22d3ee", "#60a5fa", "#a78bfa", "#f472b6"];
+      const CUSTOM_GROUP = "Mening kategoriyalarim";
+
+      const toCat = (cc) => ({
+        id: cc.id, label: cc.label,
+        icon: CUSTOM_ICONS[cc.icon] || MoreHorizontal,
+        color: cc.color, group: CUSTOM_GROUP,
+        bucket: cc.type === "xarajat" ? cc.bucket || "boshqa" : undefined,
+        type: cc.type,
+      });
+
+      const MONTHS = ["Yan", "Fev", "Mar", "Apr", "May", "Iyun", "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek"];
+      const MONTHS_FULL = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"];
+      const WEEKDAYS_FULL = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
+      const WEEKDAYS_SHORT = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"];
+
+      const NAV = [
+        { id: "dashboard", labelKey: "navDashboard", shortKey: "navDashboardShort", icon: BarChart2 },
+        { id: "transactions", labelKey: "navTransactions", shortKey: "navTransactionsShort", icon: SlidersHorizontal },
+        { id: "debts", labelKey: "navDebts", shortKey: "navDebtsShort", icon: Banknote },
+        { id: "goals", labelKey: "navGoals", shortKey: "navGoalsShort", icon: Target },
+        { id: "budget", labelKey: "navBudget", shortKey: "navBudgetShort", icon: Bell },
+      ];
+      const SETTINGS_NAV = { id: "settings", labelKey: "navSettings", shortKey: "navSettingsShort", icon: Settings };
+
+      const LANGUAGES = [
+        { id: "uz", label: "O'zbekcha" },
+        { id: "ru", label: "Русский" },
+        { id: "en", label: "English" },
+      ];
+
+      const STRINGS = {
+        uz: {
+          navDashboard: "Bosh sahifa", navDashboardShort: "Bosh",
+          navTransactions: "Tranzaksiyalar", navTransactionsShort: "Tarix",
+          navDebts: "Qarz daftari", navDebtsShort: "Qarz",
+          navGoals: "Maqsadlar", navGoalsShort: "Maqsad",
+          navBudget: "Byudjet", navBudgetShort: "Byudjet",
+          navSettings: "Sozlamalar", navSettingsShort: "Sozlama",
+          tagline: "Moliyaviy ahvolingizni real vaqtda kuzating",
+          addTransaction: "Tranzaksiya", close: "Yopish",
+          settingsLanguageTitle: "Til",
+          settingsLanguageHint: "Ilova tilini tanlang.",
+        },
+        en: {
+          navDashboard: "Dashboard", navDashboardShort: "Home",
+          navTransactions: "Transactions", navTransactionsShort: "History",
+          navDebts: "Debt Book", navDebtsShort: "Debts",
+          navGoals: "Goals", navGoalsShort: "Goals",
+          navBudget: "Budget", navBudgetShort: "Budget",
+          navSettings: "Settings", navSettingsShort: "Settings",
+          tagline: "Track your finances in real time",
+          addTransaction: "Transaction", close: "Close",
+          settingsLanguageTitle: "Language",
+          settingsLanguageHint: "Choose app language.",
+        },
+        ru: {
+          navDashboard: "Главная", navDashboardShort: "Главная",
+          navTransactions: "Транзакции", navTransactionsShort: "История",
+          navDebts: "Долговая книга", navDebtsShort: "Долги",
+          navGoals: "Цели", navGoalsShort: "Цели",
+          navBudget: "Бюджет", navBudgetShort: "Бюджет",
+          navSettings: "Настройки", navSettingsShort: "Настройки",
+          tagline: "Отслеживайте свои финансы в реальном времени",
+          addTransaction: "Транзакция", close: "Закрыть",
+          settingsLanguageTitle: "Язык",
+          settingsLanguageHint: "Выберите язык приложения.",
+        },
+      };
+
+      const translate = (lang, key) => (STRINGS[lang] && STRINGS[lang][key]) || STRINGS.uz[key] || key;
+
+      const DEFAULT_QUICK = {
+        xarajat: ["oziq", "yolkira", "kafe", "kommunal", "ijara"],
+        tushum: ["oylik", "frilans", "bonus", "sirtqi", "boshqa_t"],
+      };
+
+      const KEYS = {
+        txns: "moliya_txns", goals: "moliya_goals", budget: "moliya_budget",
+        catLimits: "moliya_catlimits", recurring: "moliya_recurring",
+        customCats: "moliya_customcats", usd: "moliya_usd",
+        hiddenCats: "moliya_hiddencats", demo: "moliya_demo",
+        debts: "moliya_debts", transfers: "moliya_transfers",
+        pin: "moliya_pin", pinFail: "moliya_pinfail", hide: "moliya_hide",
+        lang: "moliya_lang", lastBackup: "moliya_lastbackup",
+        backupSnooze: "moliya_backupsnooze", firstUse: "moliya_firstuse",
+        legacyGoal: "moliya_goal", legacyCollected: "moliya_collected", legacyDeadline: "moliya_deadline",
+      };
+
+      const pad = (n) => String(n).padStart(2, "0");
+      const monthKey = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+      const todayStr = () => { const d = new Date(); return `${monthKey(d)}-${pad(d.getDate())}`; };
+      const shiftMonth = (key, delta) => { const [y, m] = key.split("-").map(Number); return monthKey(new Date(y, m - 1 + delta, 1)); };
+      const monthLabel = (key) => { const [y, m] = key.split("-").map(Number); return `${MONTHS_FULL[m - 1]} ${y}`; };
+      const dayLabel = (dateStr) => { const [y, m, d] = dateStr.split("-").map(Number); return `${d} ${MONTHS_FULL[m - 1]}, ${WEEKDAYS_FULL[new Date(y, m - 1, d).getDay()]}`; };
+      const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+      let MASK_MONEY = false;
+      const fmtRaw = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " so'm";
+      const fmt = (n) => (MASK_MONEY ? "•••••• so'm" : fmtRaw(n));
+
+      const fmtShort = (n) => {
+        if (MASK_MONEY) return "••";
+        const abs = Math.abs(n);
+        const sign = n < 0 ? "-" : "";
+        if (abs >= 1_000_000) return sign + (abs / 1_000_000).toFixed(1) + "M";
+        if (abs >= 1_000) return sign + (abs / 1_000).toFixed(0) + "K";
+        return sign + abs;
+      };
+
+      const pctChange = (cur, prev) => (prev > 0 ? ((cur - prev) / prev) * 100 : undefined);
+      const sumBy = (list, type) => list.filter((t) => t.type === type).reduce((s, t) => s + t.amount, 0);
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+      function parseAmount(raw) {
+        const s = String(raw ?? "").trim().toLowerCase().replace(/\s+/g, "");
+        if (!s) return NaN;
+        if (/^\d{1,3}([.,]\d{3})+$/.test(s)) return Number(s.replace(/[.,]/g, ""));
+        const m = s.match(/^(\d+(?:[.,]\d+)?)(k|ming|m|mln|million)?$/);
+        if (!m) return NaN;
+        const base = Number(m[1].replace(",", "."));
+        const sfx = m[2];
+        if (!sfx) return /[.,]/.test(m[1]) ? NaN : base;
+        return Math.round(base * (sfx === "k" || sfx === "ming" ? 1e3 : 1e6));
+      }
+
+      const isValidTx = (t) => t && typeof t.desc === "string" && Number.isFinite(Number(t.amount)) && Number(t.amount) > 0 && (t.type === "tushum" || t.type === "xarajat") && /^\d{4}-\d{2}-\d{2}$/.test(t.date || "");
+      const normalizeTx = (t) => ({
+        id: t.id ? String(t.id) : uid(), desc: t.desc, amount: Number(t.amount), type: t.type,
+        category: t.category || (t.type === "tushum" ? "boshqa_t" : "kutilmagan"),
+        method: isValidMethod(t.method) ? t.method : "karta", date: t.date,
+        ...(t.recurringId ? { recurringId: String(t.recurringId) } : {}),
+        ...(t.debtPaymentId ? { debtPaymentId: String(t.debtPaymentId) } : {}),
+      });
+
+      const isValidGoal = (g) => g && typeof g.name === "string" && g.name.trim() && Number(g.target) > 0 && Number(g.saved) >= 0;
+      const normalizeGoal = (g) => ({ id: g.id ? String(g.id) : uid(), name: g.name.trim(), target: Number(g.target), saved: Number(g.saved), deadline: typeof g.deadline === "string" ? g.deadline : "" });
+
+      const isValidPayment = (p) => p && Number(p.amount) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(p.date || "");
+      const normalizePayment = (p) => ({ id: p.id ? String(p.id) : uid(), amount: Number(p.amount), date: p.date, ...(p.txnId ? { txnId: String(p.txnId) } : {}) });
+
+      const isValidDebt = (d) => d && typeof d.person === "string" && d.person.trim() && (d.direction === "berdim" || d.direction === "oldim") && Number(d.amount) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(d.date || "");
+      const normalizeDebt = (d) => ({
+        id: d.id ? String(d.id) : uid(), person: d.person.trim(), direction: d.direction, amount: Number(d.amount),
+        date: d.date, dueDate: /^\d{4}-\d{2}-\d{2}$/.test(d.dueDate || "") ? d.dueDate : "",
+        note: typeof d.note === "string" ? d.note.trim() : "",
+        payments: Array.isArray(d.payments) ? d.payments.filter(isValidPayment).map(normalizePayment) : [],
+      });
+
+      const isValidTransfer = (t) => t && isValidMethod(t.from) && isValidMethod(t.to) && t.from !== t.to && Number(t.amount) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(t.date || "");
+      const normalizeTransfer = (t) => ({ id: t.id ? String(t.id) : uid(), from: t.from, to: t.to, amount: Number(t.amount), date: t.date, note: typeof t.note === "string" ? t.note.trim() : "" });
+
+      const isValidRule = (r) => r && typeof r.desc === "string" && Number(r.amount) > 0 && (r.type === "tushum" || r.type === "xarajat") && Number(r.day) >= 1 && Number(r.day) <= 31 && /^\d{4}-\d{2}$/.test(r.start || "");
+      const normalizeRule = (r) => ({ id: r.id ? String(r.id) : uid(), desc: r.desc, amount: Number(r.amount), type: r.type, category: r.category, method: isValidMethod(r.method) ? r.method : "karta", day: Number(r.day), start: r.start, done: Array.isArray(r.done) ? r.done.filter((x) => typeof x === "string") : [] });
+
+      const isValidCustomCat = (c) => c && typeof c.id === "string" && typeof c.label === "string" && c.label.trim() && (c.type === "tushum" || c.type === "xarajat");
+
+      const store = {
+        get(key, fallback) { try { const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch { return fallback; } },
+        set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} },
+      };
+
+      const num = (v, fallback) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
+
+      function loadGoals() {
+        const g = store.get(KEYS.goals, null);
+        if (Array.isArray(g)) return g.filter(isValidGoal).map(normalizeGoal);
+        const legacyGoal = store.get(KEYS.legacyGoal, null);
+        const legacyCollected = store.get(KEYS.legacyCollected, null);
+        if (legacyGoal === null && legacyCollected === null) return [];
+        const target = num(legacyGoal, 10000000);
+        const saved = num(legacyCollected, 1500000);
+        const deadline = store.get(KEYS.legacyDeadline, "");
+        return [{ id: "g1", name: "Kontrakt jamg'armasi", target, saved, deadline: typeof deadline === "string" ? deadline : "" }];
+      }
+
+      function healthLabel(income, expense) {
+        if (income === 0) return { text: "Ma'lumot yo'q", color: "text-slate-400", bg: "bg-slate-800", border: "border-slate-700" };
+        const ratio = expense / income;
+        if (ratio < 0.5) return { text: "A'lo 🌟", color: "text-emerald-400", bg: "bg-emerald-950", border: "border-emerald-800" };
+        if (ratio < 0.7) return { text: "Yaxshi ✅", color: "text-blue-400", bg: "bg-blue-950", border: "border-blue-800" };
+        if (ratio < 0.85) return { text: "O'rta ⚠️", color: "text-amber-400", bg: "bg-amber-950", border: "border-amber-800" };
+        return { text: "Ehtiyot bo'ling 🔴", color: "text-red-400", bg: "bg-red-950", border: "border-red-800" };
+      }
+
+      function scoreLabel(score) {
+        if (score >= 80) return { text: "A'lo", color: "#34d399" };
+        if (score >= 60) return { text: "Yaxshi", color: "#60a5fa" };
+        if (score >= 40) return { text: "O'rta", color: "#fbbf24" };
+        return { text: "Ehtiyot bo'ling", color: "#f87171" };
+      }
+
+      const seedData = () => {
+        const cur = monthKey();
+        const prev = shiftMonth(cur, -1);
+        return [
+          { id: "s1", desc: "Oylik ish haqi", amount: 2500000, type: "tushum", category: "oylik", date: `${prev}-01` },
+          { id: "s2", desc: "Kvartira ijarasi", amount: 800000, type: "xarajat", category: "ijara", date: `${prev}-02` },
+          { id: "s3", desc: "Oziq-ovqat xaridlari", amount: 350000, type: "xarajat", category: "oziq", date: `${prev}-05` },
+          { id: "s4", desc: "Stajirovka to'lovi", amount: 600000, type: "tushum", category: "staj", date: `${prev}-10` },
+          { id: "s5", desc: "Metro kartasi", amount: 80000, type: "xarajat", category: "yolkira", date: `${prev}-11` },
+          { id: "s6", desc: "Kontrakt uchun jamg'arma", amount: 500000, type: "xarajat", category: "kontrakt", date: `${prev}-15` },
+          { id: "s7", desc: "Sirtqi loyiha", amount: 400000, type: "tushum", category: "sirtqi", date: `${prev}-18` },
+          { id: "s8", desc: "Kino va ko'ngilochar", amount: 120000, type: "xarajat", category: "kongiloch", date: `${prev}-20` },
+          { id: "s9", desc: "Oylik ish haqi", amount: 2500000, type: "tushum", category: "oylik", date: `${cur}-01` },
+          { id: "s10", desc: "Kvartira ijarasi", amount: 800000, type: "xarajat", category: "ijara", date: `${cur}-02` },
+          { id: "s11", desc: "Oziq-ovqat", amount: 290000, type: "xarajat", category: "oziq", date: `${cur}-03` },
+          { id: "s12", desc: "Tanishdan qaytgan qarz", amount: 200000, type: "tushum", category: "tanish", date: `${cur}-04` },
+        ];
+      };
+
+      function generateRecurring(rules, today = todayStr()) {
+        const cur = today.slice(0, 7);
+        const created = [];
+        const updated = rules.map((rule) => {
+          const done = new Set(rule.done || [
